@@ -49,6 +49,7 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
 
 #ifndef STDIN_FILENO
 #define STDIN_FILENO 0
@@ -171,6 +172,13 @@ void disableRawMode(void) {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.orig_termios);
 }
 
+static void kilo_handle_signal(int sig) {
+    (void)sig;
+    disableRawMode();
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
 void enableRawMode(void) {
     if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1) {
         perror("tcgetattr");
@@ -182,7 +190,7 @@ void enableRawMode(void) {
     raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
     raw.c_oflag &= ~(OPOST);
     raw.c_cflag |= (CS8);
-    raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    raw.c_lflag &= ~(ECHO | ICANON | IEXTEN);
     raw.c_cc[VMIN] = 0;
     raw.c_cc[VTIME] = 1;
 
@@ -190,6 +198,19 @@ void enableRawMode(void) {
         perror("tcsetattr");
         exit(1);
     }
+
+#ifdef SIGINT
+    signal(SIGINT, kilo_handle_signal);
+#endif
+#ifdef SIGTERM
+    signal(SIGTERM, kilo_handle_signal);
+#endif
+#ifdef SIGQUIT
+    signal(SIGQUIT, kilo_handle_signal);
+#endif
+#ifdef SIGHUP
+    signal(SIGHUP, kilo_handle_signal);
+#endif
 }
 
 /* Key reader */
@@ -250,6 +271,11 @@ int editorReadKey(void) {
         }
         return '\x1b';
     }
+
+    if (c == E.orig_termios.c_cc[VINTR]) return CTRL_KEY('c');
+    if (c == E.orig_termios.c_cc[VEOF]) return CTRL_KEY('d');
+    if (c == E.orig_termios.c_cc[VERASE]) return BACKSPACE;
+    if (c == E.orig_termios.c_cc[VKILL]) return CTRL_KEY('u');
 
     return c;
 }
