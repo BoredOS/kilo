@@ -50,6 +50,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdarg.h>
 
 #ifndef STDIN_FILENO
 #define STDIN_FILENO 0
@@ -61,12 +62,6 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 #define TIOCGWINSZ 0x5413
-struct winsize {
-    unsigned short ws_row;
-    unsigned short ws_col;
-    unsigned short ws_xpixel;
-    unsigned short ws_ypixel;
-};
 
 #define KILO_VERSION "1.0 - BoredOS"
 #define KILO_TAB_STOP 8
