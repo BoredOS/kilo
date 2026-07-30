@@ -312,8 +312,8 @@ int getWindowSize(int *rows, int *cols) {
     // Subtract 1 from columns to prevent the TTY from auto-wrapping at the right margin.
     // This stops the cursor from shifting down an extra line and triggering vertical scrolling,
     // which caused the status bar duplication and screen flickering.
-    if (*cols > 1) {
-        (*cols)--;
+    if (*cols <= 80) {
+        if (*cols > 1) (*cols)--;
     }
 
     // Subtract 1 from rows because the physical TTY slightly cuts off the last line.
@@ -1156,6 +1156,7 @@ void initEditor(void) {
         exit(1);
     }
     E.screenrows -= 2; // Leave space for status bar and message bar
+
 }
 
 int main(int argc, char **argv) {
