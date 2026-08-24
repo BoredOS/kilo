@@ -52,6 +52,15 @@
 #include <signal.h>
 #include <stdarg.h>
 
+static volatile sig_atomic_t g_kilo_winch = 0;
+static void handle_sigwinch(int sig) {
+    (void)sig;
+    g_kilo_winch = 1;
+}
+
+int getWindowSize(int *rows, int *cols);
+void editorRefreshScreen(void);
+
 #ifndef STDIN_FILENO
 #define STDIN_FILENO 0
 #endif
@@ -62,6 +71,7 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 #define TIOCGWINSZ 0x5413
+#define TIOCSPGRP  0x5410
 
 #define KILO_VERSION "1.0 - BoredOS"
 #define KILO_TAB_STOP 8
@@ -214,11 +224,26 @@ int editorReadKey(void) {
     int nread;
     // BoredOS reads are non-blocking; sleep briefly on empty queue to prevent high CPU usage.
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
-        if (nread == -1 && errno != EAGAIN) {
+        if (g_kilo_winch) {
+            g_kilo_winch = 0;
+            if (getWindowSize(&E.screenrows, &E.screencols) != -1) {
+                E.screenrows -= 2;
+                editorRefreshScreen();
+            }
+        }
+        if (nread == -1 && errno != EAGAIN && errno != EINTR) {
             perror("read");
             exit(1);
         }
         usleep(5000); // 5ms sleep
+    }
+
+    if (g_kilo_winch) {
+        g_kilo_winch = 0;
+        if (getWindowSize(&E.screenrows, &E.screencols) != -1) {
+            E.screenrows -= 2;
+            editorRefreshScreen();
+        }
     }
 
     if (c == '\x1b') {
@@ -1160,6 +1185,10 @@ void initEditor(void) {
 }
 
 int main(int argc, char **argv) {
+    int fg = getpid();
+    ioctl(STDIN_FILENO, TIOCSPGRP, &fg);
+    signal(SIGWINCH, handle_sigwinch);
+
     enableRawMode();
     initEditor();
     clear_screen();
