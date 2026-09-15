@@ -10,11 +10,11 @@ CFLAGS  = -Wall -Wextra -std=gnu11 -O2 -fno-stack-protector \
 
 LDFLAGS = -Wl,-z,max-page-size=0x1000 -Wl,-dynamic-linker,/usr/lib/ld.so -Wl,-rpath,/usr/lib:/lib
 
-APPS    = kilo.elf
+APPS    = kilo
 
 all: $(APPS)
 
-kilo.elf: obj/kilo.o
+kilo: obj/kilo.o
 	$(CC) $< $(LDFLAGS) -o $@
 
 obj/%.o: src/%.c
@@ -29,12 +29,12 @@ install: all
 bup: all
 	rm -rf build/package
 	mkdir -p build/package/bin
-	cp kilo.elf build/package/bin/
+	cp $(APPS) build/package/bin/
 	@echo 'name = "kilo"' > build/package/MANIFEST.toml
 	@echo 'version = "1.0.0"' >> build/package/MANIFEST.toml
 	@echo '[install]' >> build/package/MANIFEST.toml
 	@echo 'bin = "/bin"' >> build/package/MANIFEST.toml
-	x86_64-boredos-strip --strip-unneeded build/package/bin/*.elf 2>/dev/null || true
+	x86_64-boredos-strip --strip-unneeded build/package/bin/* 2>/dev/null || true
 	tar -cf build/kilo.tar -C build/package MANIFEST.toml bin
 	lz4 -f build/kilo.tar build/kilo.bup
 	rm -f build/kilo.tar
